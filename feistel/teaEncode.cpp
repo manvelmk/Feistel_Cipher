@@ -1,10 +1,10 @@
 #include <iostream>
-#include <cstdlib>
-#include <cstddef>
+//#include <cstdlib>
+//#include <cstddef>
 #include <string>
 #include <fstream>
-//#include <vector>
-//#include <map>
+#include <vector>
+#include <map>
 #include <array>
 #include <ctime>
 using namespace std;
@@ -25,46 +25,44 @@ void encipher(const std::string& str, const std::string& key, std::string* out)
 {
 	unsigned int v[2], w[2], k[4], keyBuff[4];
 
-	// Set array values to 0
+	// Set array values to 0 (windows set them to default values)
 	memset(v, 0, sizeof(v));
 	memset(w, 0, sizeof(w));
 	memset(k, 0, sizeof(k));
 	memset(keyBuff, 0, sizeof(keyBuff));
-	//out->clear();
 
-	// Process the key
+	// Check key size, store in key buffer and divide it into 4 subkeys
 	int len = key.length();
 	if (len > 16)
 		len = 16;
 	memcpy(keyBuff, key.c_str(), len);
-	for (int i = 0; i < 4; ++i)
+	for (int i = 0; i < 4; ++i)	// ++i more efficient
 		k[i] = keyBuff[i];
 
-	// Copy the input string to a buffer of size multiple of 4
-	int strbuflen = str.length();
-	if (strbuflen == 0)
+	// Copy input string to a buffer of size multiple of 4
+	int strBuffLen = str.length();
+	if (strBuffLen == 0)
 		return;
-	if ((strbuflen % 4) > 0)
-		strbuflen += 4 - (strbuflen % 4);
-	unsigned char* strbuf = new unsigned char[strbuflen];
-	memset(strbuf, 0, strbuflen);
-	memcpy(strbuf, str.c_str(), str.length());
+	if ((strBuffLen % 4) > 0)
+		strBuffLen += 4 - (strBuffLen % 4);
+	unsigned char* strBuff = new unsigned char[strBuffLen];
 
-	// Encode it!
+	// Initialize and copy input string into the string buffer
+	memset(strBuff, 0, strBuffLen);
+	memcpy(strBuff, str.c_str(), str.length());
+
+	// Encode
 	out->clear();
 	v[1] = 0;
-	for (int i = 0; i < strbuflen; i += 4)
+	for (int i = 0; i < strBuffLen; i += 4)
 	{
-		v[0] = *(unsigned int*)&strbuf[i];
-
-		encBlock(&v[0], &w[0], &k[0]);
-		out->append((char*)&w[0], 4);
-
+		v[0] = *(unsigned int*)&strBuff[i];
+		encBlock(&v[0], &w[0], &k[0]);	// encode one block with a piece of given string
+		out->append((char*)&w[0], 4);	// add encoded part to output string
 		v[1] = w[1];
 	}
 	out->append((char*)&v[1], 4);
-
-	delete[] strbuf;
+	delete[] strBuff;
 }
 void decBlock(unsigned int* v, unsigned int* w, unsigned int* k)
 {
@@ -82,20 +80,20 @@ void decipher(const std::string& str, const std::string& key, std::string* out)
 {
 	unsigned int v[2], w[2], k[4], keyBuff[4];
 
-	// Set array values to 0
+	// Set array values to 0 (windows set them to default values)
 	memset(v, 0, sizeof(v));
 	memset(w, 0, sizeof(w));
 	memset(k, 0, sizeof(k));
 	memset(keyBuff, 0, sizeof(keyBuff));
 
-	// Count the number of passes that we need
+	// Calculate number of blocks and passes
 	int numBlocks = str.length() / 4;
 	int numPasses = numBlocks - 1;
 
 	if (numPasses <= 0)
 		return;
 
-	// Process the key
+	// Check key size, store in key buffer and divide it into 4 subkeys
 	int len = key.length();
 	if (len > 16)
 		len = 16;
@@ -103,23 +101,23 @@ void decipher(const std::string& str, const std::string& key, std::string* out)
 	for (int i = 0; i < 4; ++i)
 		k[i] = keyBuff[i];
 
-	// Create a temporary buffer to store the result
-	unsigned char* buffer = new unsigned char[numPasses * 4 + 4];
-	memset(buffer, 0, numPasses * 4 + 4);
+	// Make buffer to store ouput
+	unsigned char* temb_buffer = new unsigned char[(numPasses + 1) * 4 ];
+	memset(temb_buffer, 0, numPasses * 4 + 4);
 
+	// Decode
 	out->clear();
 	const char* p = str.c_str();
 	v[1] = *(unsigned int*)&p[numPasses * 4];
 	for (int i = 0; i < numPasses; ++i)
 	{
 		v[0] = *(unsigned int*)&p[(numPasses - i - 1) * 4];
-		decBlock(&v[0], &w[0], &k[0]);
-		*(unsigned int*)&buffer[(numPasses - i - 1) * 4] = w[0];
+		decBlock(&v[0], &w[0], &k[0]);	// encode one block with a piece of given string
+		*(unsigned int*)&temb_buffer[(numPasses - i - 1) * 4] = w[0];
 		v[1] = w[1];
 	}
-
-	out->assign((char *)buffer, numPasses * 4);
-	delete[] buffer;
+	out->assign((char *)temb_buffer, numPasses * 4);
+	delete[] temb_buffer;
 }
 
 int main()
@@ -127,18 +125,22 @@ int main()
 	ifstream fileIn;
 	ofstream fileOut;
 
-	//string f1, f2, f3;
-	string f1, f2;
-	string *fileName = &f1; // File Name
-	string *key = &f2; // Key 
-	//string *data = &f3; // Data 
-	string *name = new string;
-	char choice;
-	string str;
-	string outdata;
+	string f1;			// holds key
+	string *key = &f1;	// pointer to key
+	char choice;		// holds user menu choice
+	string str;			// holds user input to encipher
+	string outdata;		// holds enciphered text
+	string decoded;		// holds deciphered text
 
+	// Delete older files
+	remove("cipher.fstl");
+	remove("output.txt");
+
+	// MENU
 	do {
+		cout << "__________\n";
 		cout << "1: Encrypt\n2: Decrypt\n3: Exit\n";
+		cout << "__________\n";
 		cin >> choice;
 
 		switch (choice) {
@@ -149,15 +151,21 @@ int main()
 			cout << "Enter the string to encrypt" << endl;
 			getline(cin, str);
 
-			encipher(str, f2, &outdata);
+			// Encipher and display
+			encipher(str, f1, &outdata);
 			str = "0";
 			cout << "\nCiphertext: " << outdata << endl;
-			system("pause");
-			cout << "Ciphertext saved in cipher.fstl\n" << endl;
 
+			// Write ciphertext to cipher.fstl
 			fileOut.open("cipher.fstl", ios::out | ios::binary);
-			fileOut.write(outdata.c_str(), outdata.size());
-			fileOut.close();
+			if (fileOut.good())
+			{
+				fileOut.write(outdata.c_str(), outdata.size());
+				fileOut.close();
+				cout << "Ciphertext saved in cipher.fstl\n" << endl;
+			}
+			else
+				cout << "Error opening file for writing\n";
 			system("pause");
 
 			break;
@@ -167,22 +175,27 @@ int main()
 			cin.ignore();
 			getline(cin, *key);
 
-			//Open file "cipher.fstl" and read the ciphertext into variable ciphertext
+			// Open file "cipher.fstl" and read the ciphertext into variable ciphertext
 			cout << "Opening cipher.fstl to read ciphertext..." << endl;
 			fileIn.open("cipher.fstl", ios::in | ios::binary);
 			string ciphertext((istreambuf_iterator<char>(fileIn)), istreambuf_iterator<char>());
 			fileIn.close();
 
-			string decoded;
-			decipher(ciphertext, f2, &decoded);
+			// Decipher and display
+			decipher(ciphertext, f1, &decoded);
 			ciphertext = "0";
 			cout << "Decoded: " << decoded << endl;
-			system("pause");
-			cout << "Decoded message saved in output.txt\n" << endl;
 
+			// Write decoded text to output.txt
 			fileOut.open("output.txt", ios::out | ios::binary);
-			fileOut.write(decoded.c_str(), decoded.size());
-			fileOut.close();
+			if (fileOut.good())
+			{
+				fileOut.write(decoded.c_str(), decoded.size());
+				fileOut.close();
+				cout << "Decoded message saved in output.txt\n" << endl;
+			}
+			else
+				cout << "Error opening file for writing\n";
 			system("pause");
 
 			break;
@@ -193,42 +206,4 @@ int main()
 		default: cout << "Please choose 1, 2 or 3\n";
 		}
 	} while (choice != 3);
-
-	// Key here
-		/*cout << "Enter the encryption Key" << endl;
-		getline(cin, *key);*/
-
-		// Name system
-			/*cout << "Enter the name of the file you want to open!" << endl;
-			getline(cin,*fileName);*/
-
-			// Input System
-				/*fileIn.open(*fileName, ios::in | ios::binary);
-				string str((istreambuf_iterator<char>(fileIn)), istreambuf_iterator<char>());
-
-				fileIn.close();
-				cout << "File Loaded Into RAM!" << endl;
-				system("pause");*/
-
-				/*string str;
-				cout << "Enter the string to encrypt" << endl;
-				getline(cin, str);*/
-
-				// Tea System
-					/*string outdata;
-					TeaEncode(str, f2, &outdata);
-					str = "0";
-					cout << "Ciphertext: " << outdata << endl;
-					system("pause");*/
-
-					// Write Data
-						//cout << "Ciphertext saved in cipher.fstl" << endl;
-						///*getline(cin,*fileName);
-						//system("pause");*/
-						//fileOut.open("cipher.fstl", ios::out | ios::binary);
-					 //   fileOut.write(outdata.c_str(), outdata.size());
-
-					// End
-	cout << "All Done!" << endl;
-	system("pause");
 }

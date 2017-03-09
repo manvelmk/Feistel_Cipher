@@ -1,0 +1,7 @@
+﻿  teaEncode.cpp
+c:\users\manny\source\repos\feistel_cipher\feistel\teaencode.cpp(35): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+c:\users\manny\source\repos\feistel_cipher\feistel\teaencode.cpp(43): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+c:\users\manny\source\repos\feistel_cipher\feistel\teaencode.cpp(90): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+c:\users\manny\source\repos\feistel_cipher\feistel\teaencode.cpp(97): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  feistel.vcxproj -> C:\Users\Manny\Source\Repos\Feistel_Cipher\x64\Debug\feistel.exe
+  feistel.vcxproj -> C:\Users\Manny\Source\Repos\Feistel_Cipher\x64\Debug\feistel.pdb (Partial PDB)
