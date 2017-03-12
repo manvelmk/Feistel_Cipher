@@ -1,21 +1,16 @@
 #include <iostream>
-//#include <cstdlib>
-//#include <cstddef>
 #include <string>
 #include <fstream>
-#include <vector>
-#include <map>
-#include <array>
-#include <ctime>
 using namespace std;
 
 void encBlock(unsigned int* v, unsigned int* w, unsigned int* k)
 {
 	register unsigned int v0 = v[0], v1 = v[1], i, sum = 0;
+	// Magic constant: 2^32/(golden ratio) in HEX for key scheduling
 	register unsigned int delta = 0x9E3779B9;
 	for (i = 0; i < 32; i++) {
 		v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + k[sum & 3]);
-		sum += delta;
+		sum += delta;	// increment the cumulitive delta
 		v1 += (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + k[(sum >> 11) & 3]);
 	}
 	w[0] = v0; w[1] = v1;
@@ -25,7 +20,7 @@ void encipher(const std::string& str, const std::string& key, std::string* out)
 {
 	unsigned int v[2], w[2], k[4], keyBuff[4];
 
-	// Set array values to 0 (windows set them to default values)
+	// Set array values to 0 (windows sets them to default values)
 	memset(v, 0, sizeof(v));
 	memset(w, 0, sizeof(w));
 	memset(k, 0, sizeof(k));
@@ -37,7 +32,7 @@ void encipher(const std::string& str, const std::string& key, std::string* out)
 		len = 16;
 	memcpy(keyBuff, key.c_str(), len);
 	for (int i = 0; i < 4; ++i)	// ++i more efficient
-		k[i] = keyBuff[i];
+		k[i] = keyBuff[i];	// store each of the 4 parts of key into array k[]
 
 	// Copy input string to a buffer of size multiple of 4
 	int strBuffLen = str.length();
@@ -66,11 +61,11 @@ void encipher(const std::string& str, const std::string& key, std::string* out)
 }
 void decBlock(unsigned int* v, unsigned int* w, unsigned int* k)
 {
-	register unsigned int v0 = v[0], v1 = v[1], i, sum = 0xC6EF3720;
+	register unsigned int v0 = v[0], v1 = v[1], i, sum = 0xC6EF3720; // initial sum derived from TEA algorithm definition
 	register unsigned int delta = 0x9E3779B9;
 	for (i = 0; i < 32; i++) {
 		v1 -= (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + k[(sum >> 11) & 3]);
-		sum -= delta;
+		sum -= delta;	// decrement the cumulitive delta
 		v0 -= (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + k[sum & 3]);
 	}
 	w[0] = v0; w[1] = v1;
@@ -102,8 +97,8 @@ void decipher(const std::string& str, const std::string& key, std::string* out)
 		k[i] = keyBuff[i];
 
 	// Make buffer to store ouput
-	unsigned char* temb_buffer = new unsigned char[(numPasses + 1) * 4 ];
-	memset(temb_buffer, 0, numPasses * 4 + 4);
+	unsigned char* temp_buffer = new unsigned char[(numPasses + 1) * 4 ];
+	memset(temp_buffer, 0, numPasses * 4 + 4);
 
 	// Decode
 	out->clear();
@@ -113,11 +108,11 @@ void decipher(const std::string& str, const std::string& key, std::string* out)
 	{
 		v[0] = *(unsigned int*)&p[(numPasses - i - 1) * 4];
 		decBlock(&v[0], &w[0], &k[0]);	// encode one block with a piece of given string
-		*(unsigned int*)&temb_buffer[(numPasses - i - 1) * 4] = w[0];
+		*(unsigned int*)&temp_buffer[(numPasses - i - 1) * 4] = w[0];
 		v[1] = w[1];
 	}
-	out->assign((char *)temb_buffer, numPasses * 4);
-	delete[] temb_buffer;
+	out->assign((char *)temp_buffer, numPasses * 4);
+	delete[] temp_buffer;
 }
 
 int main()
@@ -127,10 +122,10 @@ int main()
 
 	string f1;			// holds key
 	string *key = &f1;	// pointer to key
-	char choice;		// holds user menu choice
 	string str;			// holds user input to encipher
 	string outdata;		// holds enciphered text
 	string decoded;		// holds deciphered text
+	char choice;		// holds user menu choice
 
 	// Delete older files
 	remove("cipher.fstl");
@@ -153,7 +148,7 @@ int main()
 
 			// Encipher and display
 			encipher(str, f1, &outdata);
-			str = "0";
+			str = "0";	// clear string
 			cout << "\nCiphertext: " << outdata << endl;
 
 			// Write ciphertext to cipher.fstl
